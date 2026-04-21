@@ -42,7 +42,7 @@ submission/
 Langkah pertama, unduh proyek ini ke komputer lokal Anda 
 menggunakan perintah berikut:
 ```
-git clone https://github.com/[username]/submission-analisis-data.git
+git clone https://github.com/dyandrapusponegoro/submission-analisis-data.git
 ```
 
 ### Instalasi Library
