@@ -2,88 +2,85 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
+import matplotlib.patches as mpatches
 from matplotlib.patches import Patch
+import seaborn as sns
 
-# --- KONFIGURASI DAN GAYA ---
-sns.set_style("whitegrid")
-
-PRIMARY_COLOR      = "#4C72B0"
-SECONDARY_COLOR    = "#DD8452"
-ACCENT_COLOR_DARK  = "#C44E52"
-ACCENT_COLOR_LIGHT = "#55A868"
-
+# Konfigurasi halaman
 st.set_page_config(
     page_title="Dashboard Kualitas Udara Beijing",
     page_icon="🌫️",
     layout="wide"
 )
 
-# --- LOAD DATA ---
+# Gaya visual
+sns.set_style("whitegrid")
+
+# --- DEFINISI WARNA ---
+PRIMARY_COLOR     = '#2196F3'
+SECONDARY_COLOR   = '#FF9800'
+ACCENT_COLOR_DARK = '#F44336'
+ACCENT_COLOR_LIGHT = '#4CAF50'
+
 @st.cache_data
 def load_data():
-    try:
-        df = pd.read_csv('dashboard/main_data.csv')
-    except FileNotFoundError:
-        df = pd.read_csv('main_data.csv')
+    df = pd.read_csv('dashboard/main_data.csv')
     return df
 
 df = load_data()
 
-# --- SIDEBAR ---
 with st.sidebar:
+    st.title("🌫️ Air Quality Beijing")
     st.markdown("**Nama:** Diandra Puspo Negoro")
-    st.markdown("**Email:** dyandrapusponegoro@gmail.com")
-    st.markdown("**ID Dicoding:** pediiiasure")
     st.markdown("---")
-    st.header("Filter Data")
+    st.header("⚙️ Filter Data")
 
+    # Filter Tahun
     selected_years = st.multiselect(
-        "Pilih Tahun",
+        "📅 Pilih Tahun",
         options=sorted(df['year'].unique().tolist()),
         default=sorted(df['year'].unique().tolist())
     )
 
+    # Filter Stasiun
     selected_stations = st.multiselect(
-        "Pilih Stasiun",
+        "📍 Pilih Stasiun",
         options=sorted(df['station'].unique().tolist()),
         default=sorted(df['station'].unique().tolist())
     )
 
-# --- FILTERING ---
+# Terapkan filter
 filtered_df = df[
     (df['year'].isin(selected_years)) &
     (df['station'].isin(selected_stations))
 ]
 
 # --- JUDUL UTAMA ---
-st.title("Dashboard Kualitas Udara Beijing")
+st.title("🌫️ Dashboard Kualitas Udara Beijing")
 st.markdown("Gunakan filter di sidebar untuk menjelajahi pola kualitas udara berdasarkan stasiun dan tahun.")
 st.markdown("---")
 
 # --- METRIK RINGKASAN ---
 if not filtered_df.empty:
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Rata-rata PM2.5", f"{filtered_df['PM2.5'].mean():.1f} µg/m³")
-    col2.metric("Rata-rata Kec. Angin", f"{filtered_df['WSPM'].mean():.1f} m/s")
-    col3.metric("Rata-rata Suhu", f"{filtered_df['TEMP'].mean():.1f} °C")
-    col4.metric("Jumlah Stasiun", f"{filtered_df['station'].nunique()}")
+    col1.metric("📊 Rata-rata PM2.5", f"{filtered_df['PM2.5'].mean():.1f} µg/m³")
+    col2.metric("💨 Rata-rata Kec. Angin", f"{filtered_df['WSPM'].mean():.1f} m/s")
+    col3.metric("🌡️ Rata-rata Suhu", f"{filtered_df['TEMP'].mean():.1f} °C")
+    col4.metric("📍 Jumlah Stasiun", f"{filtered_df['station'].nunique()}")
     st.markdown("---")
 
-# --- VISUALISASI ---
+
 if filtered_df.empty:
-    st.warning("Tidak ada data untuk filter yang dipilih. Silakan ubah pilihan filter Anda.")
+    st.warning("⚠️ Tidak ada data untuk filter yang dipilih. Silakan ubah pilihan filter Anda.")
 else:
     tab1, tab2, tab3 = st.tabs([
-        "Tren PM2.5",
-        "Pengaruh Cuaca",
-        "Pengelompokan Stasiun"
+        "📈 Tren PM2.5",
+        "🌤️ Pengaruh Cuaca",
+        "📍 Pengelompokan Stasiun"
     ])
 
-    # =====================
-    # TAB 1 - TREN PM2.5
-    # =====================
-    with tab1:
+
+with tab1:
         st.header("Tren Konsentrasi PM2.5 dari 2013 hingga 2017")
 
         # Tren Tahunan
@@ -100,13 +97,11 @@ else:
                         xytext=(0, 10), textcoords='offset points',
                         ha='center', fontsize=10, fontweight='bold')
 
-        ax.axhline(15, color=ACCENT_COLOR_DARK, linestyle='--',
-                   linewidth=1.5, label='Batas Aman WHO (15 µg/m³)')
+        ax.axhline(15, color=ACCENT_COLOR_DARK, linestyle='--', linewidth=1.5, label='Batas Aman WHO (15 µg/m³)')
         ax.set_title('Rata-rata PM2.5 per Tahun', fontsize=16, fontweight='bold', pad=20)
         ax.set_xlabel('Tahun', fontsize=12)
         ax.set_ylabel('Rata-rata PM2.5 (µg/m³)', fontsize=12)
         ax.legend(fontsize=10)
-        ax.grid(axis='y', linestyle='--', alpha=0.7)
         st.pyplot(fig)
         plt.close(fig)
 
@@ -121,6 +116,7 @@ else:
         bars = ax.bar(monthly_avg['month'], monthly_avg['PM2.5'],
                       color=PRIMARY_COLOR, edgecolor='white')
 
+        # Warnai bulan tertinggi dan terendah
         idx_max = monthly_avg['PM2.5'].idxmax()
         idx_min = monthly_avg['PM2.5'].idxmin()
         bars[idx_max].set_color(ACCENT_COLOR_DARK)
@@ -143,13 +139,12 @@ else:
 
         st.markdown("---")
 
-        # Tren Harian
+        # Tren Harian (per jam)
         st.subheader("Pola PM2.5 Sepanjang Hari")
         hourly_avg = filtered_df.groupby('hour')['PM2.5'].mean().reset_index()
 
         fig, ax = plt.subplots(figsize=(12, 5))
-        ax.fill_between(hourly_avg['hour'], hourly_avg['PM2.5'],
-                        alpha=0.2, color=PRIMARY_COLOR)
+        ax.fill_between(hourly_avg['hour'], hourly_avg['PM2.5'], alpha=0.2, color=PRIMARY_COLOR)
         ax.plot(hourly_avg['hour'], hourly_avg['PM2.5'],
                 marker='o', linewidth=2, color=PRIMARY_COLOR,
                 markerfacecolor='white', markeredgewidth=2, markersize=5)
@@ -157,11 +152,9 @@ else:
         idx_max = hourly_avg['PM2.5'].idxmax()
         idx_min = hourly_avg['PM2.5'].idxmin()
         ax.scatter(hourly_avg['hour'][idx_max], hourly_avg['PM2.5'][idx_max],
-                   color=ACCENT_COLOR_DARK, s=120, zorder=5,
-                   label=f"Tertinggi Jam {hourly_avg['hour'][idx_max]:02d}:00")
+                   color=ACCENT_COLOR_DARK, s=120, zorder=5, label=f"Tertinggi Jam {hourly_avg['hour'][idx_max]:02d}:00")
         ax.scatter(hourly_avg['hour'][idx_min], hourly_avg['PM2.5'][idx_min],
-                   color=ACCENT_COLOR_LIGHT, s=120, zorder=5,
-                   label=f"Terendah Jam {hourly_avg['hour'][idx_min]:02d}:00")
+                   color=ACCENT_COLOR_LIGHT, s=120, zorder=5, label=f"Terendah Jam {hourly_avg['hour'][idx_min]:02d}:00")
 
         ax.set_title('Rata-rata PM2.5 per Jam dalam Sehari', fontsize=16, fontweight='bold', pad=20)
         ax.set_xlabel('Jam', fontsize=12)
@@ -174,18 +167,15 @@ else:
 
         st.info("""
         **Insight:**
-        - PM2.5 mengalami fluktuasi antar tahun dan belum stabil meskipun sempat membaik di 2016.
-        - Polusi paling parah terjadi di bulan November-Desember karena kondisi atmosfer musim dingin.
-        - Puncak harian terjadi pada malam hari sekitar jam 22:00 karena dispersi polutan yang terhambat.
+        - PM2.5 mengalami fluktuasi antar tahun dan **belum stabil** meskipun sempat membaik di 2016.
+        - Polusi paling parah terjadi di **bulan November–Desember** karena kondisi atmosfer musim dingin.
+        - Puncak harian terjadi pada **malam hari (sekitar jam 22:00)** karena dispersi polutan yang terhambat.
         """)
 
         with st.expander("Lihat Data Detail"):
             st.dataframe(yearly_avg.rename(columns={'year': 'Tahun', 'PM2.5': 'Rata-rata PM2.5'}))
 
-    # ========================
-    # TAB 2 - PENGARUH CUACA
-    # ========================
-    with tab2:
+with tab2:
         st.header("Pengaruh Kondisi Cuaca terhadap Konsentrasi PM2.5")
 
         # Heatmap Korelasi
@@ -227,8 +217,7 @@ else:
         wind_df = filtered_df.copy()
         wind_df['kategori_angin'] = wind_df['WSPM'].apply(kategorikan_angin)
 
-        order = ['Calm\n(0-1 m/s)', 'Light\n(1-2 m/s)',
-                 'Moderate\n(2-4 m/s)', 'Strong\n(>4 m/s)']
+        order = ['Calm\n(0-1 m/s)', 'Light\n(1-2 m/s)', 'Moderate\n(2-4 m/s)', 'Strong\n(>4 m/s)']
         wspm_mean = wind_df.groupby('kategori_angin')['PM2.5'].mean().reindex(order)
 
         colors_wind = [ACCENT_COLOR_DARK, SECONDARY_COLOR, PRIMARY_COLOR, ACCENT_COLOR_LIGHT]
@@ -270,8 +259,7 @@ else:
             ax.text(val + 0.5, i, f'{val:.1f}', va='center', fontsize=9)
 
         ax.axvline(x=filtered_df['PM2.5'].mean(), color='gray',
-                   linestyle='--', linewidth=1.2, alpha=0.7,
-                   label='Rata-rata Keseluruhan')
+                   linestyle='--', linewidth=1.2, alpha=0.7, label='Rata-rata Keseluruhan')
 
         legend_elem = [
             Patch(facecolor=ACCENT_COLOR_DARK, label='Tinggi (>90)'),
@@ -298,12 +286,10 @@ else:
         with st.expander("Lihat Data Detail"):
             st.dataframe(wind_dir_mean.reset_index(drop=True))
 
-    # ==============================
-    # TAB 3 - PENGELOMPOKAN STASIUN
-    # ==============================
-    with tab3:
+with tab3:
         st.header("Pengelompokan Stasiun Berdasarkan Profil Polusi")
 
+        # Profil rata-rata per stasiun
         station_profile = filtered_df.groupby('station').agg(
             PM2_5 = ('PM2.5', 'mean'),
             PM10  = ('PM10',  'mean'),
@@ -312,10 +298,10 @@ else:
             WSPM  = ('WSPM',  'mean')
         ).round(2).reset_index()
 
+        # Binning manual
         bins   = [0, 75, 82, 999]
         labels = ['Polusi Rendah', 'Polusi Sedang', 'Polusi Tinggi']
-        station_profile['Kelompok'] = pd.cut(station_profile['PM2_5'],
-                                              bins=bins, labels=labels)
+        station_profile['Kelompok'] = pd.cut(station_profile['PM2_5'], bins=bins, labels=labels)
 
         kelompok_colors = {
             'Polusi Rendah' : ACCENT_COLOR_LIGHT,
@@ -323,6 +309,7 @@ else:
             'Polusi Tinggi' : ACCENT_COLOR_DARK
         }
 
+        # Metrik ringkasan per kelompok
         col1, col2, col3 = st.columns(3)
         for col, label in zip([col1, col2, col3], labels):
             group = station_profile[station_profile['Kelompok'] == label]
@@ -349,14 +336,12 @@ else:
                     f'{val:.1f}', ha='left', va='center', fontsize=9)
 
         ax.axvline(x=station_profile['PM2_5'].mean(), color='gray',
-                   linestyle='--', linewidth=1.2, alpha=0.7,
-                   label='Rata-rata Keseluruhan')
+                   linestyle='--', linewidth=1.2, alpha=0.7, label='Rata-rata Keseluruhan')
 
-        legend_elem = [Patch(facecolor=c, label=l)
-                       for l, c in kelompok_colors.items()]
+        legend_elem = [Patch(facecolor=c, label=l) for l, c in kelompok_colors.items()]
         ax.legend(handles=legend_elem, fontsize=9, loc='lower right')
-        ax.set_title('Rata-rata PM2.5 per Stasiun',
-                     fontsize=14, fontweight='bold', pad=20)
+
+        ax.set_title('Rata-rata PM2.5 per Stasiun', fontsize=14, fontweight='bold', pad=20)
         ax.set_xlabel('Rata-rata PM2.5 (µg/m³)', fontsize=12)
         ax.set_ylabel('Stasiun', fontsize=12)
         ax.grid(axis='x', linestyle='--', alpha=0.7)
@@ -365,7 +350,7 @@ else:
 
         st.markdown("---")
 
-        # Grouped bar chart perbandingan polutan
+        # Grouped bar chart perbandingan polutan per kelompok
         st.subheader("Perbandingan Polutan per Kelompok Stasiun")
 
         summary = station_profile.groupby('Kelompok', observed=True).agg(
@@ -406,15 +391,13 @@ else:
         - Stasiun dibagi menjadi 3 kelompok berdasarkan rata-rata PM2.5.
         - Polusi rendah: Changping, Huairou, Dingling — berada di pinggiran kota dengan aktivitas industri minimal.
         - Polusi sedang: Shunyi — zona transisi antara pusat dan pinggiran kota.
-        - Polusi tinggi: Dongsi, Wanshouxigong, Nongzhanguan dan lainnya — berada di pusat kota dengan emisi tinggi.
+        - Polusi tinggi: Dongsi, Wanshouxigong, Nongzhanguan, dan lainnya — berada di pusat kota dengan emisi kendaraan dan industri tinggi.
         """)
 
         with st.expander("Lihat Data Detail"):
-            st.dataframe(
-                station_profile[['station', 'PM2_5', 'NO2', 'CO', 'WSPM', 'Kelompok']]
-                .sort_values('PM2_5', ascending=False)
-                .reset_index(drop=True)
-            )
+            st.dataframe(station_profile[['station', 'PM2_5', 'NO2', 'CO', 'WSPM', 'Kelompok']]
+                         .sort_values('PM2_5', ascending=False)
+                         .reset_index(drop=True))
 
 # --- FOOTER ---
 st.markdown("---")
